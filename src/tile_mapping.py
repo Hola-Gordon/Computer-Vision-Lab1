@@ -1,77 +1,67 @@
-import os
 import numpy as np
 from PIL import Image
+import os
 
 
 def load_tiles(tile_folder, grid_size):
     """
-    Loads all tile images from a folder and resizes them to `grid_size`.
-
-    Args:
-        tile_folder (str): Path to tile images.
-        grid_size (int): The size of each tile (should match grid cells).
-
-    Returns:
-        list: List of resized tile images as NumPy arrays.
+    Loads and preprocesses tiles to match grid cell size.
     """
     tiles = []
-    for filename in os.listdir(tile_folder):
-        if filename.endswith((".png", ".jpg", ".jpeg")):
-            img = Image.open(os.path.join(tile_folder, filename))
-            img = img.resize((grid_size, grid_size))  # Resize to match grid size
-            tiles.append(np.array(img))  # Convert to NumPy array
+    if not os.path.exists(tile_folder):
+        # Create default colored tiles if no tiles exist
+        colors = [(255,0,0), (0,255,0), (0,0,255), (255,255,0)]
+        for color in colors:
+            tile = np.full((grid_size, grid_size, 3), color, dtype=np.uint8)
+            tiles.append(tile)
+    else:
+        for filename in os.listdir(tile_folder):
+            if filename.endswith((".png", ".jpg", ".jpeg")):
+                img = Image.open(os.path.join(tile_folder, filename))
+                img = img.convert("RGB")
+                img = img.resize((grid_size, grid_size))
+                tiles.append(np.array(img))
+    
     return tiles
 
 
-def closest_tile(cell, tile_images):
+def generate_mosaic(grid, tile_images, output_shape):
     """
-    Finds the closest matching tile based on color similarity.
-
-    Args:
-        cell (numpy array): Image region (grid cell).
-        tile_images (list): List of tile images.
-
-    Returns:
-        numpy array: Best-matching tile.
+    Generates mosaic while maintaining consistent dimensions.
     """
-    avg_color = cell.mean(axis=(0, 1))  # Compute average color of grid cell
-
-    def color_distance(tile):
-        return np.linalg.norm(tile.mean(axis=(0, 1)) - avg_color)
-
-    best_tile = min(tile_images, key=color_distance)  # Find closest match
-    return best_tile
-
-
-def generate_mosaic(grid, tile_images, original_shape):
-    """
-    Converts each grid cell into a tile from the preloaded images while keeping original dimensions.
-
-    Args:
-        grid (numpy array): Grid of image cells.
-        tile_images (list): List of tile images.
-        original_shape (tuple): The original image's height and width.
-
-    Returns:
-        numpy array: Mosaic image with the same dimensions as the input.
-    """
-    h, w = len(grid), len(grid[0])
-    orig_h, orig_w = original_shape[:2]  # Get original image size
-
-    # Get tile size from first tile
-    tile_h, tile_w = tile_images[0].shape[:2]
-
-    # Create an empty mosaic canvas matching original size
-    mosaic = np.zeros((orig_h, orig_w, 3), dtype=np.uint8)
-
-    for i in range(h):
-        for j in range(w):
-            tile = closest_tile(grid[i][j], tile_images)  # Get best matching tile
-            start_h, start_w = i * tile_h, j * tile_w
-            end_h, end_w = start_h + tile_h, start_w + tile_w
-
-            # Ensure we don't go beyond the original image bounds
-            if end_h <= orig_h and end_w <= orig_w:
-                mosaic[start_h:end_h, start_w:end_w] = tile
-
+    grid_size = len(grid)
+    cell_h = output_shape[0] // grid_size
+    cell_w = output_shape[1] // grid_size
+    
+    # Initialize output array
+    mosaic = np.zeros((output_shape[0], output_shape[1], 3), dtype=np.uint8)
+    
+    for i in range(grid_size):
+        for j in range(grid_size):
+            # Get average color of grid cell
+            cell = grid[i, j]
+            avg_color = np.mean(cell, axis=(0,1))
+            
+            # Find best matching tile
+            best_tile_idx = 0
+            min_diff = float('inf')
+            for idx, tile in enumerate(tile_images):
+                tile_avg = np.mean(tile, axis=(0,1))
+                diff = np.sum((avg_color - tile_avg) ** 2)
+                if diff < min_diff:
+                    min_diff = diff
+                    best_tile_idx = idx
+            
+            # Resize tile to match cell size
+            tile = Image.fromarray(tile_images[best_tile_idx])
+            tile = tile.resize((cell_w, cell_h))
+            tile = np.array(tile)
+            
+            # Place tile in mosaic
+            y_start = i * cell_h
+            y_end = (i + 1) * cell_h
+            x_start = j * cell_w
+            x_end = (j + 1) * cell_w
+            mosaic[y_start:y_end, x_start:x_end] = tile
+    
     return mosaic

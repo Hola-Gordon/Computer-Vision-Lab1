@@ -1,42 +1,47 @@
+import gradio as gr
+from PIL import Image
+import numpy as np
 from src.image_processing import preprocess_image
 from src.grid_operations import divide_into_grid
 from src.tile_mapping import generate_mosaic, load_tiles
-import gradio as gr
-from PIL import Image
-
 
 
 def mosaic_pipeline(image, grid_size=16):
     """
-    Generates a tile-based mosaic from an input image.
-
-    Args:
-        image (PIL Image or NumPy array): Input image.
-        grid_size (int): Grid size for dividing the image.
-
-    Returns:
-        numpy array: Reconstructed mosaic using tile images.
+    Main pipeline for generating the mosaic.
     """
-    processed_image = preprocess_image(image, target_size=(256, 256), apply_quantization=False, num_colors=16)
-    original_shape = processed_image.shape[:2]  # Get (height, width)
+    # Store original size before preprocessing
+    original_size = image.shape[:2] 
+    # Preprocess the image
+    processed_image = preprocess_image(image, target_size=(512, 512))
+    
+    # Divide into grid and get output dimensions
     grid = divide_into_grid(processed_image, grid_size)
-
-    # ✅ Load tiles dynamically with the selected grid size
+    
+    # Load tiles
     tile_images = load_tiles("assets", grid_size)
+    
+    # Generate mosaic
+    mosaic_image = generate_mosaic(grid, tile_images, processed_image.shape)
 
-    mosaic_image = generate_mosaic(grid, tile_images, original_shape)  # Preserve shape
-
+    # Resize mosaic back to original size
+    mosaic_image = Image.fromarray(mosaic_image)
+    mosaic_image = mosaic_image.resize((original_size[1], original_size[0]))  # PIL uses (width, height)
+    mosaic_image = np.array(mosaic_image)
+    
     return mosaic_image
 
 
-# Gradio UI
+# Create Gradio interface
 iface = gr.Interface(
     fn=mosaic_pipeline,
     inputs=[
-        gr.Image(label="Upload Image"),
-        gr.Slider(4, 64, step=4, value=16, label="Grid Size"),
+        gr.Image(label="Upload Image", type="numpy"),
+        gr.Slider(minimum=4, maximum=64, step=4, value=16, label="Grid Size")
     ],
-    outputs="image"
+    outputs=gr.Image(label="Mosaic Output"),
+    title="Image Mosaic Generator",
+    description="Upload an image and adjust the grid size to create a mosaic effect."
 )
 
 if __name__ == "__main__":
