@@ -26,7 +26,7 @@ def mosaic_pipeline(image, grid_size=16):
 
     # Resize mosaic back to original size
     mosaic_image = Image.fromarray(mosaic_image)
-    mosaic_image = mosaic_image.resize((original_size[1], original_size[0]))  # PIL uses (width, height)
+    mosaic_image = mosaic_image.resize((original_size[1], original_size[0]))  
     mosaic_image = np.array(mosaic_image)
     
     return mosaic_image

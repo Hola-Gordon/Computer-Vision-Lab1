@@ -26,18 +26,17 @@ def load_tiles(tile_folder, grid_size):
 
 
 def generate_mosaic(grid, tile_images, output_shape):
-    """
-    Generates mosaic while maintaining consistent dimensions.
-    """
-    grid_size = len(grid)
-    cell_h = output_shape[0] // grid_size
-    cell_w = output_shape[1] // grid_size
+    num_cells_h, num_cells_w = grid.shape[:2]
     
-    # Initialize output array
+    # Calculate cell dimensions
+    cell_h = output_shape[0] // num_cells_h
+    cell_w = output_shape[1] // num_cells_w
+    
+    # Initialize output array with exact output shape
     mosaic = np.zeros((output_shape[0], output_shape[1], 3), dtype=np.uint8)
     
-    for i in range(grid_size):
-        for j in range(grid_size):
+    for i in range(num_cells_h):
+        for j in range(num_cells_w):
             # Get average color of grid cell
             cell = grid[i, j]
             avg_color = np.mean(cell, axis=(0,1))
@@ -52,16 +51,17 @@ def generate_mosaic(grid, tile_images, output_shape):
                     min_diff = diff
                     best_tile_idx = idx
             
-            # Resize tile to match cell size
+            # Ensure tile exactly matches cell size
             tile = Image.fromarray(tile_images[best_tile_idx])
-            tile = tile.resize((cell_w, cell_h))
+            tile = tile.resize((cell_w, cell_h), Image.LANCZOS)
             tile = np.array(tile)
             
             # Place tile in mosaic
             y_start = i * cell_h
-            y_end = (i + 1) * cell_h
+            y_end = min((i + 1) * cell_h, output_shape[0])
             x_start = j * cell_w
-            x_end = (j + 1) * cell_w
-            mosaic[y_start:y_end, x_start:x_end] = tile
+            x_end = min((j + 1) * cell_w, output_shape[1])
+            
+            mosaic[y_start:y_end, x_start:x_end] = tile[:(y_end-y_start), :(x_end-x_start)]
     
     return mosaic
