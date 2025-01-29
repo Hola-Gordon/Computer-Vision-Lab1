@@ -1,15 +1,15 @@
+import os
 import numpy as np
 from PIL import Image
-import os
 
 
-def load_tiles(tile_folder, grid_size):
+
+def load_tiles(tile_folder="assets", grid_size=8):  # Changed from tile_size to grid_size
     """
-    Loads and preprocesses tiles to match grid cell size.
+    Loads tiles and resizes them to match grid_size exactly
     """
     tiles = []
     if not os.path.exists(tile_folder):
-        # Create default colored tiles if no tiles exist
         colors = [(255,0,0), (0,255,0), (0,0,255), (255,255,0)]
         for color in colors:
             tile = np.full((grid_size, grid_size, 3), color, dtype=np.uint8)
@@ -17,51 +17,57 @@ def load_tiles(tile_folder, grid_size):
     else:
         for filename in os.listdir(tile_folder):
             if filename.endswith((".png", ".jpg", ".jpeg")):
-                img = Image.open(os.path.join(tile_folder, filename))
-                img = img.convert("RGB")
-                img = img.resize((grid_size, grid_size))
-                tiles.append(np.array(img))
-    
+                try:
+                    img = Image.open(os.path.join(tile_folder, filename))
+                    img = img.convert("RGB")
+                    img = img.resize((grid_size, grid_size), Image.NEAREST)
+                    tiles.append(np.array(img))
+                except Exception as e:
+                    print(f"Error loading tile {filename}: {e}")
     return tiles
 
+def generate_mosaic(image_array, grid_size):
+    """
+    Generates mosaic by replacing grid cells with best matching tiles
+    """
+    # Load tiles - changed tile_size to grid_size in this call
+    tiles = load_tiles(grid_size=grid_size)  # Changed from tile_size to grid_size
+    if not tiles:
+        raise ValueError("No tiles found in assets folder!")
+        
+    h, w = image_array.shape[:2]
+    grid_h = h // grid_size
+    grid_w = w // grid_size
+    
+    output = np.zeros_like(image_array)
+    
+    for i in range(grid_h):
+        for j in range(grid_w):
+            y1, y2 = i * grid_size, (i + 1) * grid_size
+            x1, x2 = j * grid_size, (j + 1) * grid_size
+            
+            cell = image_array[y1:y2, x1:x2]
+            best_tile = find_best_tile(cell, tiles)
+            output[y1:y2, x1:x2] = best_tile
+    
+    return output
 
-def generate_mosaic(grid, tile_images, output_shape):
-    num_cells_h, num_cells_w = grid.shape[:2]
+
+def find_best_tile(cell, tiles):
+    """
+    Finds the best matching tile for a given cell based on average color
+    """
+    cell_avg = np.mean(cell, axis=(0,1))
     
-    # Calculate cell dimensions
-    cell_h = output_shape[0] // num_cells_h
-    cell_w = output_shape[1] // num_cells_w
+    best_tile_idx = 0
+    min_diff = float('inf')
     
-    # Initialize output array with exact output shape
-    mosaic = np.zeros((output_shape[0], output_shape[1], 3), dtype=np.uint8)
-    
-    for i in range(num_cells_h):
-        for j in range(num_cells_w):
-            # Get average color of grid cell
-            cell = grid[i, j]
-            avg_color = np.mean(cell, axis=(0,1))
+    for idx, tile in enumerate(tiles):
+        tile_avg = np.mean(tile, axis=(0,1))
+        diff = np.sum((cell_avg - tile_avg) ** 2)
+        if diff < min_diff:
+            min_diff = diff
+            best_tile_idx = idx
             
-            # Find best matching tile
-            best_tile_idx = 0
-            min_diff = float('inf')
-            for idx, tile in enumerate(tile_images):
-                tile_avg = np.mean(tile, axis=(0,1))
-                diff = np.sum((avg_color - tile_avg) ** 2)
-                if diff < min_diff:
-                    min_diff = diff
-                    best_tile_idx = idx
-            
-            # Ensure tile exactly matches cell size
-            tile = Image.fromarray(tile_images[best_tile_idx])
-            tile = tile.resize((cell_w, cell_h), Image.LANCZOS)
-            tile = np.array(tile)
-            
-            # Place tile in mosaic
-            y_start = i * cell_h
-            y_end = min((i + 1) * cell_h, output_shape[0])
-            x_start = j * cell_w
-            x_end = min((j + 1) * cell_w, output_shape[1])
-            
-            mosaic[y_start:y_end, x_start:x_end] = tile[:(y_end-y_start), :(x_end-x_start)]
-    
-    return mosaic
+    return tiles[best_tile_idx]
+
