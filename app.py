@@ -36,7 +36,7 @@ def mosaic_pipeline(image, grid_size=16):
 iface = gr.Interface(
     fn=mosaic_pipeline,
     inputs=[
-        gr.Image(label="Upload Image"),
+        gr.Image(label="Upload Image", type="pil"),
         gr.Slider(minimum=8, maximum=64, step=8, value=16, label="Grid Size")
     ],
     outputs=[
@@ -44,7 +44,11 @@ iface = gr.Interface(
         gr.File(label="Download Mosaic")
     ],
     title="Image Mosaic Generator",
-    description="Upload an image to create a mosaic effect. Grid size must be a multiple of 8."
+    description="Upload an image to create a mosaic effect. Grid size must be a multiple of 8.",
+    examples=[
+        ["examples/coffee.jpg", 16],  
+        ["examples/lake.jpg", 8],  
+    ]
 )
 
 if __name__ == "__main__":
