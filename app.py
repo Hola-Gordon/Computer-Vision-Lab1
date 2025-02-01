@@ -5,7 +5,7 @@ import os
 from src.image_processing import preprocess_image
 from src.grid_operations import divide_into_grid
 from src.tile_mapping import generate_mosaic
-from src.metrics import calculate_mse
+from src.metrics import evaluate_mosaic
 
 
 def mosaic_pipeline(image, grid_size=16):
@@ -19,8 +19,10 @@ def mosaic_pipeline(image, grid_size=16):
     mosaic = generate_mosaic(processed_image, grid_size)
     
     # Calculate similarity metric
-    mse = calculate_mse(processed_image, mosaic)
-    print(f"Mean Squared Error: {mse}")
+    metrics = evaluate_mosaic(processed_image, mosaic)
+    print(f"MSE: {metrics['mse']:.2f}")
+    print(f"SSIM: {metrics['ssim']:.3f}")
+    print(f"PSNR: {metrics['psnr']:.2f} dB")
     
     # Create downloadable output
     output_image = Image.fromarray(mosaic)
