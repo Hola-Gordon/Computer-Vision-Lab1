@@ -31,8 +31,5 @@ The performance of the mosaic generator was assessed for different grid sizes us
 ### Results
 The variation in MSE, SSIM, and PSNR values across different grid sizes highlights the challenges in balancing the fidelity and aesthetic quality of the mosaic. Smaller grid sizes provide higher resolution but may result in lower similarity indices (lower SSIM and PSNR), indicating a trade-off between visual appearance and fidelity to the original image.
 
-### Gradio Demo
-Gradio demo: [Click here to access the Gradio Demo](https://    )
-
 ### Conclusion
 The Image Mosaic Generator successfully creates visually appealing mosaics from input images, with the added capability to quantitatively assess the similarity between the original images and their mosaic counterparts using comprehensive metrics. Future work could explore the use of advanced image processing algorithms to improve both the aesthetic quality and the accuracy of the mosaic images.
