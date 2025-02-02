@@ -3,8 +3,7 @@ import numpy as np
 from PIL import Image
 
 
-
-def load_tiles(tile_folder="assets", grid_size=8):  # Changed from tile_size to grid_size
+def load_tiles(tile_folder="assets", grid_size=8): 
     """
     Loads tiles and resizes them to match grid_size exactly
     """
@@ -26,12 +25,13 @@ def load_tiles(tile_folder="assets", grid_size=8):  # Changed from tile_size to 
                     print(f"Error loading tile {filename}: {e}")
     return tiles
 
+
 def generate_mosaic(image_array, grid_size):
     """
     Generates mosaic by replacing grid cells with best matching tiles
     """
-    # Load tiles - changed tile_size to grid_size in this call
-    tiles = load_tiles(grid_size=grid_size)  # Changed from tile_size to grid_size
+    
+    tiles = load_tiles(grid_size=grid_size)  
     if not tiles:
         raise ValueError("No tiles found in assets folder!")
         
